@@ -1,3 +1,5 @@
 venv
 static
 temp
+__pycache__
+.idea
