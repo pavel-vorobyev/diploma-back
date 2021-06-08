@@ -1,0 +1,7 @@
+flask
+opencv-python
+pytesseract
+matplotlib
+sqlalchemy
+psycopg2-binary
+PyJWT
