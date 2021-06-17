@@ -5,3 +5,4 @@ matplotlib
 sqlalchemy
 psycopg2-binary
 PyJWT
+sqlalchemy-serializer

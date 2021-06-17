@@ -1,56 +1,81 @@
-import os
+import json
 
-from sqlalchemy import create_engine, Column, String, ForeignKey, MetaData
-from sqlalchemy.orm import sessionmaker, declarative_base, relationship, scoped_session
+import psycopg2
 
-db_host = os.environ["DB_HOST"]
-db_name = os.environ["DB_NAME"]
-db_user = os.environ["DB_USER"]
-db_password = os.environ["DB_PASSWORD"]
+# db_host = os.environ["DB_HOST"]
+# db_name = os.environ["DB_NAME"]
+# db_user = os.environ["DB_USER"]
+# db_password = os.environ["DB_PASSWORD"]
 
-NAMING_CONVENTION = {
-    "ix": "ix_%(column_0_label)s",
-    "uq": "uq_%(table_name)s_%(column_0_name)s",
-    "ck": "ck_%(table_name)s_%(constraint_name)s",
-    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s"
-}
-
-metadata = MetaData(naming_convention=NAMING_CONVENTION)
-DbBase = declarative_base(metadata=metadata)
-
-db_url = "postgresql://{}:{}@{}/{}".format(db_user, db_password, db_host, db_name)
-engine = create_engine(db_url, convert_unicode=True)
-session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-DBSession = scoped_session(session)
+db_host = "localhost"
+db_name = "diploma"
+db_user = "diploma"
+db_password = "qwerty"
 
 
-class Guard(DbBase):
-    __tablename__ = "guards"
-
-    id = Column(String, primary_key=True)
-    name = Column(String)
-    login = Column(String)
-    password = Column(String)
-
-    accepted_visits = relationship("Visit")
+def get_db():
+    l_db = psycopg2.connect("dbname='{}' user='{}' host='{}' password='{}'"
+                            .format(db_name, db_user, db_host, db_password))
+    l_db.autocommit = True
+    return l_db
 
 
-class Visitor(DbBase):
-    __tablename__ = "visitors"
-
-    id = Column(String, primary_key=True)
-    license = Column(String)
+db = get_db()
 
 
-class Visit(DbBase):
-    __tablename__ = "visits"
+class JsonableModel:
 
-    id = Column(String, primary_key=True)
-    guard_id = Column(String, ForeignKey("guards.id"))
-
-    visitor_id = Column(String, ForeignKey("visitors.id"))
-    visitor = relationship("Visitor", load_on_pending=True, foreign_keys=[visitor_id])
+    def to_dict(self):
+        return json.loads(json.dumps(self, default=lambda o: o.__dict__, sort_keys=False))
 
 
-DbBase.metadata.create_all(engine)
+class Guard(JsonableModel):
+    id: str
+    name: str
+    login: str
+    password: str
+
+    def __init__(self, o_id, name, login, password):
+        self.id = o_id
+        self.name = name
+        self.login = login
+        self.password = password
+
+    @staticmethod
+    def from_dict(d):
+        return Guard(d["id"], d["name"], d["login"], d["password"])
+
+
+class Visitor(JsonableModel):
+    id: str
+    license: str
+
+    def __init__(self, o_id, o_license):
+        self.id = o_id
+        self.license = o_license
+
+    @staticmethod
+    def from_dict(d):
+        return Visitor(d["id"], d["license"])
+
+
+class Visit(JsonableModel):
+    id: str
+    guard_id: str
+    date: str
+    is_allowed: bool
+    scan_file: str
+    visitor_id: str
+    visitor: Visitor
+
+    def __init__(self, o_id, guard_id, date, is_allowed, scan_file, visitor_id):
+        self.id = o_id
+        self.guard_id = guard_id
+        self.date = date
+        self.is_allowed = is_allowed
+        self.scan_file = scan_file
+        self.visitor_id = visitor_id
+
+    @staticmethod
+    def from_dict(d):
+        return Visit(d["id"], d["guard_id"], d["date"], d["is_allowed"], d["scan_file"], d["visitor_id"])
